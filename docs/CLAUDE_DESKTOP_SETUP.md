@@ -55,11 +55,12 @@ After adding the configuration, restart Claude Desktop for the changes to take e
 
 ### Model Configuration (Optional)
 
-The default model is `glm-4.5v`, but you can specify different GLM vision models:
+The default model is `glm-4.5v`, which supports vision capabilities. However, the server supports any OpenAI-compatible vision model:
 
-- `glm-4.5v` - Default vision model (recommended)
-- `glm-4v` - Previous generation vision model
-- `glm-4v-plus` - Enhanced vision model (if available)
+- `glm-4.5v` - Default GLM vision model (required for GLM platform)
+- **Other OpenAI-compatible vision models** - Any vision model that works with OpenAI's API format, such as:
+  - GPT-4V, GPT-4 Turbo Vision, Claude 3.5 Sonnet, etc.
+  - Just set the appropriate model name and API base URL
 
 Example configuration with custom model:
 ```json

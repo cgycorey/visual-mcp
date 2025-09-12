@@ -1,6 +1,6 @@
 # Visual MCP Server
 
-An MCP (Model Context Protocol) server that provides unified multimodal image analysis using GLM-4.5V vision model. Just upload an image with context about what you want to know, and the AI figures out the best approach.
+An MCP (Model Context Protocol) server that provides unified multimodal image analysis using vision models. Just upload an image with context about what you want to know, and the AI figures out the best approach.
 
 ## Features
 
@@ -191,8 +191,9 @@ The `--from` flag tells `uvx` to use the specific wheel file instead of download
 
 - **`GLM_API_KEY`** (Required): Your GLM API key from [https://z.ai/model-api](https://z.ai/model-api)
 - **`GLM_MODEL_NAME`** (Optional): Model name to use (default: `glm-4.5v`)
-  - Available models: `glm-4.5v`, `glm-4v`, `glm-4-air`, `glm-4-airx`
-  - Different models have varying capabilities and costs
+  - Any OpenAI-compatible vision model is supported
+  - GLM example: `glm-4.5v` (only GLM model with vision support)
+  - Other examples: `gpt-4-vision-preview`, `gpt-4-turbo`, `claude-3-5-sonnet-20241022`, etc.
 
 ## Usage
 
@@ -245,12 +246,12 @@ graph TB
     subgraph "Visual MCP Server"
         D[MCP Server]
         E[Image Upload Handler]
-        F[GLM-4.5V Vision Model]
+        F[Vision Model]
         G[Analysis Tools]
     end
     
     subgraph "External Services"
-        H[GLM-4.5V API]
+        H[Vision Model API]
     end
     
     A --> D
@@ -268,12 +269,16 @@ graph TB
 
 ## API Key Configuration
 
-Set your GLM-4.5V API key in environment variables:
+Set your vision model API key in environment variables:
 
 ```bash
-# Get your API key from https://z.ai/model-api
+# For GLM models, get your API key from https://z.ai/model-api
 export GLM_API_KEY="your-api-key-here"
 
-# Optional: Use BigModel platform instead
+# For other OpenAI-compatible models, use the appropriate key name
+# export OPENAI_API_KEY="your-openai-api-key-here"
+
+# Optional: Set custom API base URL
 # export GLM_API_BASE="https://open.bigmodel.cn/api/paas/v4"
+# export OPENAI_API_BASE="https://api.openai.com/v1"
 ```
