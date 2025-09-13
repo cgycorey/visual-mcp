@@ -6,9 +6,11 @@ architecture diagrams, and extracting textual information using GLM vision model
 One tool for all your visual analysis needs.
 """
 
+import asyncio
 import base64
 import mimetypes
 import os
+import traceback
 from pathlib import Path
 
 import httpx
@@ -27,9 +29,9 @@ text extraction, diagram analysis, or summaries as needed.
 )
 
 # Configuration
-GLM_API_BASE = os.getenv("GLM_API_BASE", "https://api.z.ai/api/paas/v4")
+GLM_API_BASE = os.getenv("GLM_API_BASE", "https://nano-gpt.com/api/v1")
 GLM_API_KEY = os.getenv("GLM_API_KEY")
-GLM_MODEL_NAME = os.getenv("GLM_MODEL_NAME", "glm-4.5v")
+GLM_MODEL_NAME = os.getenv("GLM_MODEL_NAME", "zai-org/GLM-4.5V-FP8")
 
 
 class ImageAnalysisRequest(BaseModel):
@@ -129,8 +131,10 @@ async def call_glm_vision_api(
     prompt: str,
     mime_type: str = "image/jpeg",
     max_tokens: int = 2048,
+    max_retries: int = 5,
+    retry_delay: float = 2.0,
 ) -> str:
-    """Call GLM-4.5V vision API for image analysis"""
+    """Call GLM-4.5V vision API for image analysis with retry logic"""
     if not GLM_API_KEY:
         raise ValueError("GLM_API_KEY environment variable not set")
 
@@ -167,15 +171,18 @@ async def call_glm_vision_api(
         "temperature": 0.7,
     }
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    last_error = None
+    
+    for attempt in range(max_retries):
         try:
-            response = await client.post(
-                f"{GLM_API_BASE}/chat/completions", headers=headers, json=payload
-            )
-            response.raise_for_status()
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                response = await client.post(
+                    f"{GLM_API_BASE}/chat/completions", headers=headers, json=payload
+                )
+                response.raise_for_status()
 
-            result = response.json()
-            return result["choices"][0]["message"]["content"]
+                result = response.json()
+                return result["choices"][0]["message"]["content"]
 
         except httpx.HTTPStatusError as e:
             error_msg = f"GLM API error: {e.response.status_code}"
@@ -187,9 +194,31 @@ async def call_glm_vision_api(
                 )
             except Exception:
                 error_msg += f" - {e.response.text}"
-            raise RuntimeError(error_msg) from None
+            
+            last_error = RuntimeError(error_msg)
+            
+            # Don't retry on authentication errors or certain HTTP status codes
+            if e.response.status_code in (401, 403, 429):
+                break
+                
+        except httpx.TimeoutException as e:
+            last_error = RuntimeError(f"GLM API timeout: {e}")
+        except httpx.NetworkError as e:
+            last_error = RuntimeError(f"GLM API network error: {e}")
         except Exception as e:
-            raise RuntimeError(f"Failed to call GLM API: {e}") from None
+            error_details = f"Failed to call GLM API: {str(e)}\
+            Traceback: {traceback.format_exc()}"
+            last_error = RuntimeError(error_details)
+        
+        # If this is not the last attempt, wait before retrying
+        if attempt < max_retries - 1:
+            await asyncio.sleep(retry_delay * (2 ** attempt))  # Exponential backoff
+    
+    # All retries failed, raise the last error
+    if last_error:
+        raise last_error
+    else:
+        raise RuntimeError("Failed to call GLM API after maximum retries")
 
 
 @mcp.tool()
@@ -246,7 +275,7 @@ Adapt your response style and focus based on what the user is asking for.
 Be thorough but concise.
 """
 
-        # Call GLM vision API
+        # Call GLM vision API with retry logic
         result = await call_glm_vision_api(
             image_base64, enhanced_prompt, mime_type, max_tokens
         )
