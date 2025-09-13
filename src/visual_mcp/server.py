@@ -172,7 +172,7 @@ async def call_glm_vision_api(
     }
 
     last_error = None
-    
+
     for attempt in range(max_retries):
         try:
             async with httpx.AsyncClient(timeout=120.0) as client:
@@ -194,13 +194,13 @@ async def call_glm_vision_api(
                 )
             except Exception:
                 error_msg += f" - {e.response.text}"
-            
+
             last_error = RuntimeError(error_msg)
-            
+
             # Don't retry on authentication errors or certain HTTP status codes
             if e.response.status_code in (401, 403, 429):
                 break
-                
+
         except httpx.TimeoutException as e:
             last_error = RuntimeError(f"GLM API timeout: {e}")
         except httpx.NetworkError as e:
@@ -209,11 +209,11 @@ async def call_glm_vision_api(
             error_details = f"Failed to call GLM API: {str(e)}\
             Traceback: {traceback.format_exc()}"
             last_error = RuntimeError(error_details)
-        
+
         # If this is not the last attempt, wait before retrying
         if attempt < max_retries - 1:
-            await asyncio.sleep(retry_delay * (2 ** attempt))  # Exponential backoff
-    
+            await asyncio.sleep(retry_delay * (2**attempt))  # Exponential backoff
+
     # All retries failed, raise the last error
     if last_error:
         raise last_error
